@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[33]:
+# # 공공 데이터 포털로부터 날씨 정보 가져오기
+
+# In[1]:
 
 
 import requests
@@ -27,13 +29,13 @@ res = requests.get(vilage_weather_url + payload)
 items = res.json().get('response').get('body').get('items').get('item')
 
 
-# In[34]:
+# In[2]:
 
 
 items
 
 
-# In[35]:
+# In[3]:
 
 
 data = dict()
@@ -70,13 +72,18 @@ data['weather']
 # {'code': '0', 'state': '없음', 'tmp': '9'} # 9도 / 기상 이상 없음
 
 
-# In[36]:
+# # 날씨에 따른 음식 데이터 저장
+
+# In[4]:
 
 
 rain_foods = "부대찌개,아구찜,해물탕,칼국수,수제비,짬뽕,우동,치킨,국밥,김치부침개,두부김치,파전".split(',')
 
 
-# In[37]:
+# # 네이버 검색 API를 통해 음식점 검색
+# # 인증, 음식리스트 저장, 맛집 검색
+
+# In[5]:
 
 
 # 네이버 인증
@@ -84,7 +91,7 @@ rain_foods = "부대찌개,아구찜,해물탕,칼국수,수제비,짬뽕,우동
 # 해당 사이트에서 로그인 후 "Cliend ID"와 "Client Secret"을 얻어오세요
 ncreds = {
     "client_id": "P9pgwk4i5fibPN3TWG5V",      
-    "client_secret" : "P9pgwk4i5fibPN3TWG5V"
+    "client_secret" : "Ul2LM3vZtt"
 }
 nheaders = {
     "X-Naver-Client-Id" : ncreds.get('client_id'),
@@ -92,7 +99,7 @@ nheaders = {
 }
 
 
-# In[38]:
+# In[6]:
 
 
 # 경우 1 : 비/눈/소나기           => 비오는날 음식 3개 추천
@@ -105,7 +112,7 @@ else:
     weather_state = '2'
 
 
-# In[61]:
+# In[7]:
 
 
 import random
@@ -123,17 +130,18 @@ foods_list
 # ['쌀국수', '굴', '콩나물국밥', '마라탕', '고등어']
 
 
-# In[62]:
+# In[8]:
 
 
 food_list = ['쌀국수', '굴', '콩나물국밥', '마라탕', '고등어']
 
 
-# In[63]:
+# In[9]:
 
 
 import urllib
 # urllib.parse.quote(query) URL에서 검색어를 인코딩하기 위한 라이브러리
+import json
 
 # 네이버 지역 검색 주소
 naver_local_url = "https://openapi.naver.com/v1/search/local.json?"
@@ -170,8 +178,9 @@ for food in foods_list:
     
     # 경우 1 처리
     # 해당 음식 검색 결과에서 가장 상위를 가져옴
-    elif result_list:
+    elif len(result_list) > 0:
         recommands.append(result_list[0])
+        
         # 3개를 찾았다면 검색 중단
         if len(recommands) >= 3:
             break
@@ -179,64 +188,94 @@ for food in foods_list:
 recommands
 
 
-# In[54]:
+# # 카카오톡 메시지 전송
+
+# # 카카오톡 API access token
+
+# In[19]:
+
+
+app_key = "839749e32911063e0a8f51fce3c9a2bf"
+code = "0qNn3MNy5dsIsBy8N0OXysVob9tm_kYBd5vMjvrSr-2k4aSs7LrMs1wp0d_ICYkgSL931AopcSEAAAFyrOxa7w"
+
+
+# In[20]:
 
 
 url = "https://kauth.kakao.com/oauth/token"
 
-data = {
+data2 = {
     "grant_type" : "authorization_code",
-    "client_id" : "839749e32911063e0a8f51fce3c9a2bf",
+    "client_id" : app_key, 
     "redirect_uri" : "https://localhost.com",
-    "code"         : "Leh34YC5o7MX2dxGNVQT6MFNKZkuXnkpMuVRlVVremyPnZXtkIg4i7JYtHMww_rDhkdWkwopcJ8AAAFyhJJZKQ"
+    "code"         : code
     
 }
-response = requests.post(url, data=data)
+response = requests.post(url, data=data2)
 
 tokens = response.json()
 
 print(tokens)
 
 
-# In[14]:
+# In[11]:
+
+
+url = "https://kauth.kakao.com/oauth/token"
+data3 = {
+    "grant_type" : "refresh_token",
+    "client_id"  : app_key,
+    "refresh_token" : "LR2JqA6PXecQJK2VBnU8sC9evim2W5jnoK3dSwo9dNsAAAFyhJLrig"
+}
+response = requests.post(url, data=data3)
+tokens = response.json()
+
+print(tokens)
+
+
+# In[21]:
 
 
 with open("kakao_token.json", "w") as fp:
     json.dump(tokens, fp)
 
 
-# In[ ]:
+# In[22]:
 
 
-url = "https://kauth.kakao.com/oauth/token"
-data = {
-    "grant_type" : "refresh_token",
-    "client_id"  : "c41274663b2adca6f0866cb814c0163a",
-    "refresh_token" : "LR2JqA6PXecQJK2VBnU8sC9evim2W5jnoK3dSwo9dNsAAAFyhJLrig"
-}
-response = requests.post(url, data=data)
-
-print(response.json())
+with open("kakao_token.json", "r") as fp:
+    tokens = json.load(fp)
 
 
-# In[52]:
+# In[23]:
+
+
+tokens
+
+
+# # 카카오톡 인증
+
+# In[24]:
 
 
 # 카카오톡 인증
 # https://developers.kakao.com/docs/restapi/tool
 # 해당 사이트에서 로그인 후 'Access token'을 얻어오세요
 kcreds = {
-    "access_token" : "L1Gqs-jvNg8rot3l7Iyoc9Dicky9TSlCSjF4AAo9dNsAAAFyhJLrjA"
+    "access_token" : tokens['access_token']
 }
 kheaders = {
     "Authorization": "Bearer " + kcreds.get('access_token')
 }
 
 
-# In[53]:
+# # 날씨 정보 카카오톡으로 전송
+
+# In[27]:
 
 
 import json
+import requests
 
 # 카카오톡 URL 주소
 kakaotalk_template_url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
@@ -245,9 +284,9 @@ kakaotalk_template_url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
 weather_url = "https://search.naver.com/search.naver?sm=top_hty&fbm=0&ie=utf8&query=%EB%82%A0%EC%94%A8"
 
 # 날씨 정보 만들기 
-text = f"""#날씨 정보 ({data['date']})
-기온 : {data['weather']['tmp']}
-기우  : {data['weather']['state']}
+text = f"""#날씨 정보 ({data['date']}) 
+기온 : {data['weather']['tmp']} 
+기우  : {data['weather']['state']} 
 """
 
 # 텍스트 템플릿 형식 만들기
@@ -267,7 +306,7 @@ payload = {
 }
 
 # 카카오톡 보내기
-res = requests.post(kakaotalk_template_url, data=payload, headers=kheaders)
+res = requests.request("POST", kakaotalk_template_url, data =payload, headers=kheaders)
 
 if res.json().get('result_code') == 0:
     print('메시지를 성공적으로 보냈습니다.')
@@ -275,7 +314,9 @@ else:
     print('메시지를 성공적으로 보내지 못했습니다. 오류메시지 : ' + str(res.json()))
 
 
-# In[ ]:
+# # 추천 맛집 카카오톡으로 전송
+
+# In[26]:
 
 
 # 리스트 템플릿 형식 만들기
@@ -351,4 +392,78 @@ if res.json().get('result_code') == 0:
     print('메시지를 성공적으로 보냈습니다.')
 else:
     print('메시지를 성공적으로 보내지 못했습니다. 오류메시지 : ' + str(res.json()))
+
+
+# # 맛집 위치를 카카오맵을 통해 카카오톡으로 전송
+
+# In[35]:
+
+
+naver_search_url = "https://search.naver.com/search.naver?"
+
+# 위치 템플릿 형식 만들기
+
+# contents 만들기
+for place in recommands:
+    title = place.get('title')  # 장소 이름
+    # title : 태극쿵푸<b>마라탕</b>
+    # html 태그 제거
+    title = title.replace('<b>','').replace('</b>','')
+    
+    category = place.get('category')  # 장소 카테고리
+    telephone = place.get('telephone')  # 장소 전화번호
+    address = place.get('address')  # 장소 지번 주소
+
+    # 각 장소를 클릭할 때 카카오맵으로 연결해주기 위해 작성된 코드
+    enc_address = urllib.parse.quote(address)
+    query = "query=" + enc_address
+
+    # 장소 카테고리가 카페이면 카페 이미지
+    # 이외에는 음식 이미지
+    if '카페' in category:
+        image_url = "https://freesvg.org/img/pitr_Coffee_cup_icon.png"
+    else:
+        image_url = "https://freesvg.org/img/bentolunch.png?w=150&h=150&fit=fill"
+
+    # 전화번호가 있다면 제목과 함께 넣어줍니다.
+    if telephone:
+        category = category + "\ntel) " + telephone
+
+    # 카카오톡 리스트 템플릿 형식에 맞춰줍니다.
+    content = {
+        "title": title,
+        "description": category,
+        "image_url": image_url,
+        "image_width": 50, "image_height": 50,
+        "link": {
+            "web_url": naver_search_url + query,
+            "mobile_web_url": naver_search_url + query
+        }
+    }
+    
+    template = {
+        "object_type" : "location",
+        "address" : address,
+        "address_title" : title,
+        "content" : content
+    }   
+
+    # JSON 형식 -> 문자열 변환
+    payload = {
+        "template_object" : json.dumps(template)
+    }
+
+    # 카카오톡 보내기
+    res = requests.post(kakaotalk_template_url, data=payload, headers=kheaders)
+
+    if res.json().get('result_code') == 0:
+        print('메시지를 성공적으로 보냈습니다.')
+    else:
+        print('메시지를 성공적으로 보내지 못했습니다. 오류메시지 : ' + str(res.json()))
+
+
+# In[ ]:
+
+
+
 
