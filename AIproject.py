@@ -12,18 +12,19 @@ import datetime
 
 vilage_weather_url = "http://apis.data.go.kr/1360000/VilageFcstInfoService/getVilageFcst?"
 
+# 공공 데이터 포털에서 발급받은 인증키
 service_key = "6ClTIhHLgyLqzpIO1EsI54T%2BD02t9STimsteXUUqMaqDJ17G5ylnSlE%2BJ7AsCtqWCyV2H9aOtmDpVGgRwzatoA%3D%3D"
 
 today = datetime.datetime.today()
-base_date = today.strftime("%Y%m%d") # "20200214" == 기준 날짜
-base_time = "0500" # 날씨 값
+base_date = today.strftime("%Y%m%d") # 현재 날짜의 날씨를 받아오기 위한 변수 설정
+base_time = "0500" # 5시에 발표된 자료를 받아오기 위한 변수 설정
 
-nx = "68"     # 위치 청주시 서원구 사창동
+nx = "68" # 예보 지점의 위치(x, y) 설정, 청주시 서원구 사창동
 ny = "107"
 
 payload = "serviceKey=" + service_key + "&" +    "dataType=json" + "&" +    "base_date=" + base_date + "&" +    "base_time=" + base_time + "&" +    "nx=" + nx + "&" +    "ny=" + ny
 
-# 값 요청
+# 자료를 요청하기 위해 JSON 형식으로 요청
 res = requests.get(vilage_weather_url + payload)
 
 items = res.json().get('response').get('body').get('items').get('item')
@@ -32,23 +33,31 @@ items = res.json().get('response').get('body').get('items').get('item')
 # In[2]:
 
 
+# 요청에 의해 반환된 값
 items
+
+# fcstTime : 예보 시각
+# category : 예보 구분 코드
+#            PTY - 강수형태, T3H - 3시간 기온
+# fcstValue : 예보 값
 
 
 # In[3]:
 
 
+# 자료의 여러 category 중 T3H, PTY 값만 따로 저장
+# 값을 저장하기 위해 dictionary 형태의 data 변수 선언
 data = dict()
 data['date'] = base_date
 
 weather_data = dict()
 
 for item in items:
-    # 기온
+    # 기온 category 해당하는 값을 저장
     if item['category'] == 'T3H':
         weather_data['tmp'] = item['fcstValue']
     
-    # 기상상태
+    # 강수 형태 에 해당하는 값을 저장
     if item['category'] == 'PTY':
         
         weather_code = item['fcstValue']
@@ -67,9 +76,9 @@ for item in items:
         weather_data['code'] = weather_code
         weather_data['state'] = weather_state
 
+# category 별로 구분한 weather_data를 data 변수에 저장
 data['weather'] = weather_data
 data['weather']
-# {'code': '0', 'state': '없음', 'tmp': '9'} # 9도 / 기상 이상 없음
 
 
 # # 날씨에 따른 음식 데이터 저장
@@ -77,6 +86,7 @@ data['weather']
 # In[4]:
 
 
+# 비 오는 날 추천 음식을 저장하는 변수 선언
 rain_foods = "부대찌개,아구찜,해물탕,칼국수,수제비,짬뽕,우동,치킨,국밥,김치부침개,두부김치,파전".split(',')
 
 
@@ -88,7 +98,7 @@ rain_foods = "부대찌개,아구찜,해물탕,칼국수,수제비,짬뽕,우동
 
 # 네이버 인증
 # https://developers.naver.com/apps
-# 해당 사이트에서 로그인 후 "Cliend ID"와 "Client Secret"을 얻어오세요
+# 해당 사이트에서 로그인 후 얻어 온 "Cliend ID"와 "Client Secret"을 저장
 ncreds = {
     "client_id": "P9pgwk4i5fibPN3TWG5V",      
     "client_secret" : "Ul2LM3vZtt"
@@ -102,13 +112,13 @@ nheaders = {
 # In[6]:
 
 
-# 경우 1 : 비/눈/소나기           => 비오는날 음식 3개 추천
+# 경우 1 : 비/눈/소나기           => 비 오는 날 음식 3개 추천
 # 경우 2 : 정상                   => 블로그 리뷰 순 맛집 추천
 
-# weather_state
+# 저장한 data에서 weather_code 값이 0이 아니면 경우 1
 if data.get('weather').get('code') != '0':
     weather_state = '1'
-else:
+else:  # weather_code 값이 0이면 경우 2
     weather_state = '2'
 
 
@@ -116,27 +126,20 @@ else:
 
 
 import random
-# random.sample(x, k=len(x)) 무작위로 리스트 섞기
+# random.sample(x, k=len(x)) 함수를 사용하여 무작위로 리스트 섞기
 
 foods_list = None
 
-# 경우 1, 2
+# 경우 1이면 비 오는 날 음식 리스트를 무작위로 섞기
 if weather_state == '1':
     foods_list = random.sample(rain_foods, k=len(rain_foods))
-else:
+else:  # 경우 2
     foods_list = ['']
 
 foods_list
-# ['쌀국수', '굴', '콩나물국밥', '마라탕', '고등어']
 
 
 # In[8]:
-
-
-food_list = ['쌀국수', '굴', '콩나물국밥', '마라탕', '고등어']
-
-
-# In[9]:
 
 
 import urllib
@@ -146,12 +149,12 @@ import json
 # 네이버 지역 검색 주소
 naver_local_url = "https://openapi.naver.com/v1/search/local.json?"
 
-# 검색에 사용될 파라미터
-# 정렬 sort : 리뷰순(comment)
-# 검색어 query : 인코딩된 문자열
+# 검색에 필요한 요청 변수
+# 정렬 sort - comment (카페/블로그 리뷰 개수 순)
+# 검색어 query : 검색을 원하는 문자열, UTF-8로 인코딩된 문자열
 params_format = "sort=comment&query="
 
-# 위치는 사용자가 사용할 지역으로 변경가능
+# 청주 지역으로 위치 설정
 location = "청주"
 
 # 추천된 맛집을 담을 리스트
@@ -159,10 +162,10 @@ recommands = []
 for food in foods_list:
     # 검색어 지정
     query = location + " " + food + " 맛집"
-    enc_query = urllib.parse.quote(query)
+    enc_query = urllib.parse.quote(query) # 검색어 문자열 인코딩
     params = params_format + enc_query
     
-    # 검색
+    # 검색 요청
     # headers : 네이버 인증 정보
     res = requests.get(naver_local_url + params, headers=nheaders)
     
@@ -190,18 +193,20 @@ recommands
 
 # # 카카오톡 메시지 전송
 
-# # 카카오톡 API access token
+# # 카카오톡 API Access Token
 
-# In[19]:
+# In[9]:
 
 
-app_key = "839749e32911063e0a8f51fce3c9a2bf"
+# 카카오 서버에 요청하여 받은 인증 코드
+app_key = "839749e32911063e0a8f51fce3c9a2bf" # 앱 생성 시 발급 받은 REST API 키
 code = "0qNn3MNy5dsIsBy8N0OXysVob9tm_kYBd5vMjvrSr-2k4aSs7LrMs1wp0d_ICYkgSL931AopcSEAAAFyrOxa7w"
 
 
-# In[20]:
+# In[10]:
 
 
+# 인증 코드를 이용하여 카카오 서버에 Access Token 요청
 url = "https://kauth.kakao.com/oauth/token"
 
 data2 = {
@@ -221,6 +226,9 @@ print(tokens)
 # In[11]:
 
 
+# 받은 Access Token은 유효기간이 6시간이므로
+# 일정 기간 동안 다시 인증 절차를 거치지 않고도 액세스 토큰을 발급 받을 수 있게 하는
+# Refresh Token 요청
 url = "https://kauth.kakao.com/oauth/token"
 data3 = {
     "grant_type" : "refresh_token",
@@ -233,21 +241,23 @@ tokens = response.json()
 print(tokens)
 
 
-# In[21]:
+# In[12]:
 
 
+# kakao_token.json 파일을 생성하여 받은 토큰 저장하기
 with open("kakao_token.json", "w") as fp:
     json.dump(tokens, fp)
 
 
-# In[22]:
+# In[13]:
 
 
+# kakao_token.json 파일로 부터 저장한 토큰 불러오기
 with open("kakao_token.json", "r") as fp:
     tokens = json.load(fp)
 
 
-# In[23]:
+# In[14]:
 
 
 tokens
@@ -255,12 +265,12 @@ tokens
 
 # # 카카오톡 인증
 
-# In[24]:
+# In[15]:
 
 
 # 카카오톡 인증
 # https://developers.kakao.com/docs/restapi/tool
-# 해당 사이트에서 로그인 후 'Access token'을 얻어오세요
+# 받은 'Access token'을 저장
 kcreds = {
     "access_token" : tokens['access_token']
 }
@@ -271,7 +281,7 @@ kheaders = {
 
 # # 날씨 정보 카카오톡으로 전송
 
-# In[27]:
+# In[16]:
 
 
 import json
@@ -316,7 +326,7 @@ else:
 
 # # 추천 맛집 카카오톡으로 전송
 
-# In[26]:
+# In[17]:
 
 
 # 리스트 템플릿 형식 만들기
@@ -359,8 +369,25 @@ for place in recommands:
     # 이외에는 음식 이미지
     if '카페' in category:
         image_url = "https://freesvg.org/img/pitr_Coffee_cup_icon.png"
+    elif '치킨' in category:
+        image_url = "http://www.momstouch.co.kr/data/shopimages/xboard/menu/20170622893503.jpg"
+    elif '전' in category:
+        image_url = "http://www.sk5.co.kr/img_src/s600/a918/a9180025.jpg"
+    elif '부침' in category:
+        image_url = "http://www.sk5.co.kr/img_src/s600/a918/a9180025.jpg"
+    elif '칼국수' in category:
+        image_url = "http://www.sk5.co.kr/img_src/s600/1209/12091443.jpg"
+    elif '찜' in category:
+        image_url = "https://t1.daumcdn.net/cfile/tistory/26590D3C577B13FB30"
+    elif '부대찌개' in category:
+        image_url = "https://t1.daumcdn.net/cfile/tistory/235B103C577B13FB2F"
+    elif '일식' in category:
+        image_url = "http://www.simbata.co.kr/img_src/s600/1227/12273259.jpg"
+    elif '고기' in category:
+        image_url = "https://t1.daumcdn.net/liveboard/dailylife/8f41a57e8e0f4ce7878ffad0eda9e5bc.JPG"    
     else:
-        image_url = "https://freesvg.org/img/bentolunch.png?w=150&h=150&fit=fill"
+        image_url = "https://pgnqdrjultom1827145.cdn.ntruss.com/img/0e/fe/0efeb7320298d35eb99b02e2af0cc0a6cdb87174cfd2f85e36f501a87efd6448_v1.jpg"
+        
 
     # 전화번호가 있다면 제목과 함께 넣어줍니다.
     if telephone:
@@ -396,7 +423,7 @@ else:
 
 # # 맛집 위치를 카카오맵을 통해 카카오톡으로 전송
 
-# In[35]:
+# In[18]:
 
 
 naver_search_url = "https://search.naver.com/search.naver?"
@@ -422,9 +449,25 @@ for place in recommands:
     # 이외에는 음식 이미지
     if '카페' in category:
         image_url = "https://freesvg.org/img/pitr_Coffee_cup_icon.png"
+    elif '치킨' in category:
+        image_url = "http://www.momstouch.co.kr/data/shopimages/xboard/menu/20170622893503.jpg"
+    elif '전' in category:
+        image_url = "http://www.sk5.co.kr/img_src/s600/a918/a9180025.jpg"
+    elif '부침' in category:
+        image_url = "http://www.sk5.co.kr/img_src/s600/a918/a9180025.jpg"
+    elif '칼국수' in category:
+        image_url = "http://www.sk5.co.kr/img_src/s600/1209/12091443.jpg"
+    elif '찜' in category:
+        image_url = "https://t1.daumcdn.net/cfile/tistory/26590D3C577B13FB30"
+    elif '부대찌개' in category:
+        image_url = "https://t1.daumcdn.net/cfile/tistory/235B103C577B13FB2F"
+    elif '일식' in category:
+        image_url = "http://www.simbata.co.kr/img_src/s600/1227/12273259.jpg"
+    elif '고기' in category:
+        image_url = "https://t1.daumcdn.net/liveboard/dailylife/8f41a57e8e0f4ce7878ffad0eda9e5bc.JPG"    
     else:
-        image_url = "https://freesvg.org/img/bentolunch.png?w=150&h=150&fit=fill"
-
+        image_url = "https://pgnqdrjultom1827145.cdn.ntruss.com/img/0e/fe/0efeb7320298d35eb99b02e2af0cc0a6cdb87174cfd2f85e36f501a87efd6448_v1.jpg"
+    
     # 전화번호가 있다면 제목과 함께 넣어줍니다.
     if telephone:
         category = category + "\ntel) " + telephone
